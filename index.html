@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="logo.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #0b0b0b;
+      --bg-sidebar: #121212;
+      --bg-card: #181818;
+      --bg-hover: #222222;
+      --border-color: #242424;
+      --text-main: #dddddd;
+      --text-muted: #777777;
+      --accent-special: #f4c800;
+      --color-success: #27b300;
+      --color-error: #b71200;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'JetBrains Mono', monospace, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Dynamic Background Overlay */
+    .bg-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.2;
+      transition: opacity 0.15s ease;
+    }
+
+    .top-bar, .workspace, .modal-backdrop {
+      position: relative;
+      z-index: 1;
+    }
+
+    .top-bar {
+      height: 42px;
+      background-color: rgba(11, 11, 11, 0.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .brand img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    .brand-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+    }
+
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status-msg {
+      font-size: 0.75rem;
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .status-msg.success {
+      color: var(--color-success);
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .status-msg.error {
+      color: var(--color-error);
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 42px);
+    }
+
+    .sidebar {
+      width: 260px;
+      background-color: rgba(18, 18, 18, 0.85);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 0.8rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.2rem;
+      border-radius: 4px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .btn-icon:hover {
+      color: var(--accent-special);
+      background-color: var(--bg-hover);
+    }
+
+    .notes-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .note-item {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      position: relative;
+    }
+
+    .note-item:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .note-item.active {
+      background-color: rgba(24, 24, 24, 0.9);
+      border-left: 3px solid var(--accent-special);
+    }
+
+    .note-preview-title {
+      font-size: 0.82rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-main);
+    }
+
+    .note-preview-body {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: rgba(11, 11, 11, 0.75);
+      backdrop-filter: blur(4px);
+      position: relative;
+    }
+
+    .editor-toolbar {
+      padding: 0.4rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn-tool {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-tool:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--text-muted);
+      color: var(--accent-special);
+    }
+
+    .btn-tool:active {
+      transform: scale(0.96);
+    }
+
+    .btn-tool.active-mode {
+      background-color: var(--bg-card);
+      border-color: var(--accent-special);
+      color: var(--accent-special);
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 16px;
+      background-color: var(--border-color);
+      margin: 0 0.3rem;
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+    }
+
+    textarea, .markdown-preview {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      padding: 1.5rem;
+      resize: none;
+      outline: none;
+      overflow-y: auto;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    textarea:disabled::placeholder {
+      color: transparent;
+    }
+
+    .markdown-preview {
+      display: none;
+    }
+
+    .editor-container.preview-mode textarea {
+      display: none;
+    }
+
+    .editor-container.preview-mode .markdown-preview {
+      display: block;
+    }
+
+    .markdown-preview h1,
+    .markdown-preview h2,
+    .markdown-preview h3,
+    .markdown-preview h4 {
+      color: var(--text-main);
+      margin: 1rem 0 0.5rem 0;
+    }
+
+    .markdown-preview h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+    .markdown-preview h2 { font-size: 1.25rem; }
+    .markdown-preview h3 { font-size: 1.1rem; }
+
+    .markdown-preview p {
+      margin-bottom: 1rem;
+    }
+
+    .markdown-preview a {
+      color: var(--accent-special);
+      text-decoration: none;
+    }
+
+    .markdown-preview a:hover {
+      text-decoration: underline;
+    }
+
+    /* Embedded Images in Markdown Preview */
+    .markdown-preview img {
+      max-width: 100%;
+      max-height: 500px;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      margin: 0.8rem 0;
+      display: block;
+      object-fit: contain;
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .markdown-preview ul, 
+    .markdown-preview ol {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+    }
+
+    .markdown-preview blockquote {
+      border-left: 3px solid var(--accent-special);
+      padding-left: 1rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .markdown-preview code {
+      background-color: var(--bg-card);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .markdown-preview pre {
+      background-color: var(--bg-card);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .markdown-preview pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .markdown-preview table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+
+    .markdown-preview th, 
+    .markdown-preview td {
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+
+    .markdown-preview th {
+      background-color: var(--bg-card);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-danger:hover {
+      color: var(--color-error);
+      border-color: var(--color-error);
+      background-color: rgba(183, 18, 0, 0.05);
+    }
+
+    .btn-danger:active {
+      transform: scale(0.96);
+    }
+
+    .empty-state {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    /* Modal Styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal {
+      background-color: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 400px;
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .modal-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .modal-section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.3rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .form-group input[type="text"] {
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 0.5rem;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .form-group input[type="text"]:focus {
+      border-color: var(--accent-special);
+    }
+
+    .form-group input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-special);
+      cursor: pointer;
+    }
+
+    .range-val {
+      font-size: 0.72rem;
+      color: var(--accent-special);
+      float: right;
+    }
+
+    .data-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .data-actions .btn-tool {
+      flex: 1;
+      text-align: center;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="bgOverlay" class="bg-overlay"></div>
+
+  <div class="top-bar">
+    <div class="brand">
+      <img src="logo.png" alt="logo" onerror="this.style.display='none'">
+      <span class="brand-title">My Notes</span>
+    </div>
+    <div class="top-bar-right">
+      <span id="statusMsg" class="status-msg"></span>
+      <button class="btn-icon" id="settingsBtn" title="Settings">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Local Storage</span>
+        <button class="btn-icon" id="newNoteBtn" title="New Note">+</button>
+      </div>
+      <div id="notesList" class="notes-list"></div>
+    </aside>
+
+    <main class="editor-container" id="editorContainer">
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <button class="btn-tool" data-format="h1" title="Header 1">H1</button>
+          <button class="btn-tool" data-format="h2" title="Header 2">H2</button>
+          <button class="btn-tool" data-format="h3" title="Header 3">H3</button>
+          <div class="toolbar-divider"></div>
+          <button class="btn-tool" data-format="bold" title="Bold"><b>B</b></button>
+          <button class="btn-tool" data-format="italic" title="Italic"><i>I</i></button>
+          <button class="btn-tool" data-format="strikethrough" title="Strikethrough"><s>S</s></button>
+          <div class="toolbar-divider"></div>
+          <button class="btn-tool" data-format="quote" title="Quote">"</button>
+          <button class="btn-tool" data-format="code" title="Inline Code">&lt;/&gt;</button>
+          <button class="btn-tool" data-format="codeblock" title="Code Block">```</button>
+          <button class="btn-tool" data-format="img" title="Insert Image Link">Img</button>
+          <button class="btn-tool" data-format="ul" title="Unordered List">• List</button>
+          <button class="btn-tool" data-format="ol" title="Numbered List">1. List</button>
+          <div class="toolbar-divider"></div>
+          <button class="btn-tool" id="toggleModeBtn">Preview</button>
+        </div>
+        <div class="toolbar-group">
+          <button class="btn-danger" id="deleteBtn">Delete</button>
+        </div>
+      </div>
+      <div class="editor-wrapper">
+        <textarea id="noteInput" placeholder="Start typing with Markdown support..."></textarea>
+        <div id="markdownPreview" class="markdown-preview"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Settings</span>
+        <button class="btn-icon" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Background Settings -->
+        <div class="modal-section">
+          <span class="modal-section-title">Background</span>
+          <div class="form-group">
+            <label for="bgUrlInput">Image URL</label>
+            <input type="text" id="bgUrlInput" placeholder="[https://example.com/image.jpg](https://example.com/image.jpg)">
+          </div>
+          <div class="form-group">
+            <label for="bgOpacityInput">
+              Opacity <span class="range-val" id="opacityVal">20%</span>
+            </label>
+            <input type="range" id="bgOpacityInput" min="0" max="1" step="0.05" value="0.2">
+          </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="modal-section">
+          <span class="modal-section-title">Data Management</span>
+          <div class="data-actions">
+            <button class="btn-tool" id="exportBtn">Export Notes (JSON)</button>
+            <button class="btn-tool" id="importBtn">Import Notes (JSON)</button>
+            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-tool active-mode" id="saveBgBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Custom Marked Renderer to auto-embed raw image URLs during Preview mode
+    const customRenderer = new marked.Renderer();
+    const imageExtensions = /\.(png|jpg|jpeg|gif|webp|svg)($|\?)/i;
+
+    customRenderer.link = function(href, title, text) {
+      const linkHref = href.href || href;
+      const linkText = text || linkHref;
+      
+      // Auto-embed links pointing to images
+      if (imageExtensions.test(linkHref)) {
+        return `<img src="${linkHref}" alt="${linkText}" title="${title || linkText}" loading="lazy">`;
+      }
+      return `<a href="${linkHref}" target="_blank" rel="noopener noreferrer" title="${title || ''}">${linkText}</a>`;
+    };
+
+    customRenderer.image = function(href, title, text) {
+      const imgHref = href.href || href;
+      return `<img src="${imgHref}" alt="${text || ''}" title="${title || ''}" loading="lazy">`;
+    };
+
+    marked.setOptions({
+      renderer: customRenderer,
+      highlight: function(code, lang) {
+        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+        return hljs.highlight(code, { language }).value;
+      },
+      breaks: true
+    });
+
+    const noteInput = document.getElementById('noteInput');
+    const markdownPreview = document.getElementById('markdownPreview');
+    const newNoteBtn = document.getElementById('newNoteBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const toggleModeBtn = document.getElementById('toggleModeBtn');
+    const notesList = document.getElementById('notesList');
+    const statusMsg = document.getElementById('statusMsg');
+    const editorContainer = document.getElementById('editorContainer');
+
+    // Settings Modal Elements
+    const settingsBtn = document.getElementById('settingsBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const bgUrlInput = document.getElementById('bgUrlInput');
+    const bgOpacityInput = document.getElementById('bgOpacityInput');
+    const opacityVal = document.getElementById('opacityVal');
+    const saveBgBtn = document.getElementById('saveBgBtn');
+    const bgOverlay = document.getElementById('bgOverlay');
+
+    // Import/Export Elements
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFileInput = document.getElementById('importFileInput');
+
+    let isPreviewMode = false;
+
+    let notes = JSON.parse(localStorage.getItem('core_notes')) || [
+      { id: 1, text: "# Welcome to Webnotes\n\nThis workspace supports full **Markdown** formatting!\n\n- Write code blocks\n- Create lists\n- Use `inline code`\n\nImage links automatically embed when previewing:\n[https://images.unsplash.com/photo-1518770660439-4636190af475?w=600](https://images.unsplash.com/photo-1518770660439-4636190af475?w=600)" }
+    ];
+    let activeNoteId = notes.length ? notes[0].id : null;
+
+    let bgSettings = JSON.parse(localStorage.getItem('core_bg_settings')) || {
+      url: '',
+      opacity: '0.2'
+    };
+
+    function applyBgSettings() {
+      if (bgSettings.url) {
+        bgOverlay.style.backgroundImage = `url("${bgSettings.url}")`;
+        bgOverlay.style.opacity = bgSettings.opacity;
+      } else {
+        bgOverlay.style.backgroundImage = 'none';
+      }
+      bgUrlInput.value = bgSettings.url;
+      bgOpacityInput.value = bgSettings.opacity;
+      opacityVal.textContent = Math.round(bgSettings.opacity * 100) + '%';
+    }
+
+    function openModal() {
+      modalBackdrop.classList.add('active');
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove('active');
+    }
+
+    settingsBtn.addEventListener('click', openModal);
+    closeModalBtn.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    bgOpacityInput.addEventListener('input', (e) => {
+      opacityVal.textContent = Math.round(e.target.value * 100) + '%';
+    });
+
+    saveBgBtn.addEventListener('click', () => {
+      bgSettings.url = bgUrlInput.value.trim();
+      bgSettings.opacity = bgOpacityInput.value;
+      localStorage.setItem('core_bg_settings', JSON.stringify(bgSettings));
+      applyBgSettings();
+      closeModal();
+      showStatus('Settings Saved', 'success');
+    });
+
+    // Export Notes & Settings to JSON File
+    exportBtn.addEventListener('click', () => {
+      const backupPayload = {
+        notes: notes,
+        bgSettings: bgSettings
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "webnote.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showStatus('Notes Exported', 'success');
+    });
+
+    // Import Notes & Settings from JSON File
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const importedData = JSON.parse(event.target.result);
+          let parsedNotes = [];
+
+          if (importedData && typeof importedData === 'object' && !Array.isArray(importedData)) {
+            if (Array.isArray(importedData.notes)) {
+              parsedNotes = importedData.notes;
+            }
+            if (importedData.bgSettings) {
+              bgSettings.url = importedData.bgSettings.url || '';
+              bgSettings.opacity = importedData.bgSettings.opacity || '0.2';
+              localStorage.setItem('core_bg_settings', JSON.stringify(bgSettings));
+              applyBgSettings();
+            }
+          } else if (Array.isArray(importedData)) {
+            parsedNotes = importedData;
+          }
+
+          const sanitizedNotes = parsedNotes.map((item, idx) => {
+            if (typeof item === 'string') {
+              return { id: Date.now() + idx, text: item };
+            }
+            return {
+              id: item && item.id ? item.id : (Date.now() + idx),
+              text: item && typeof item.text === 'string' ? item.text : '# Recovered Note\n\n'
+            };
+          });
+
+          if (sanitizedNotes.length > 0) {
+            notes = sanitizedNotes;
+            activeNoteId = notes[0].id;
+            saveNotes();
+            loadActiveNote();
+            renderSidebar();
+            closeModal();
+            showStatus('Notes Imported', 'success');
+          } else {
+            showStatus('No valid notes found', 'error');
+          }
+        } catch (err) {
+          showStatus('Error Parsing File', 'error');
+        }
+      };
+      reader.readAsText(file);
+      importFileInput.value = '';
+    });
+
+    function showStatus(text, type) {
+      statusMsg.textContent = text;
+      statusMsg.className = "status-msg " + type;
+      setTimeout(() => {
+        statusMsg.className = 'status-msg';
+      }, 2000);
+    }
+
+    function renderMarkdown() {
+      const cleanText = noteInput.value;
+      markdownPreview.innerHTML = marked.parse(cleanText);
+    }
+
+    function togglePreviewMode() {
+      isPreviewMode = !isPreviewMode;
+      if (isPreviewMode) {
+        renderMarkdown();
+        editorContainer.classList.add('preview-mode');
+        toggleModeBtn.classList.add('active-mode');
+        toggleModeBtn.textContent = 'Edit';
+      } else {
+        editorContainer.classList.remove('preview-mode');
+        toggleModeBtn.classList.remove('active-mode');
+        toggleModeBtn.textContent = 'Preview';
+        noteInput.focus();
+      }
+    }
+
+    function insertFormat(type) {
+      if (isPreviewMode) togglePreviewMode();
+      
+      const start = noteInput.selectionStart;
+      const end = noteInput.selectionEnd;
+      const text = noteInput.value;
+      const selectedText = text.substring(start, end);
+      let replacement = '';
+
+      switch(type) {
+        case 'h1':
+          replacement = "# " + selectedText;
+          break;
+        case 'h2':
+          replacement = "## " + selectedText;
+          break;
+        case 'h3':
+          replacement = "### " + selectedText;
+          break;
+        case 'bold':
+          replacement = "**" + selectedText + "**";
+          break;
+        case 'italic':
+          replacement = "*" + selectedText + "*";
+          break;
+        case 'strikethrough':
+          replacement = "~~" + selectedText + "~~";
+          break;
+        case 'quote':
+          replacement = "> " + selectedText;
+          break;
+        case 'code':
+          replacement = "`" + selectedText + "`";
+          break;
+        case 'codeblock':
+          replacement = "\n```\n" + selectedText + "\n```\n";
+          break;
+        case 'img':
+          replacement = selectedText ? `![Image](${selectedText})` : `![Image](https://)`;
+          break;
+        case 'ul':
+          replacement = "- " + selectedText;
+          break;
+        case 'ol':
+          replacement = "1. " + selectedText;
+          break;
+      }
+
+      noteInput.value = text.substring(0, start) + replacement + text.substring(end);
+      updateActiveNote();
+
+      const newEnd = start + replacement.length;
+      noteInput.focus();
+      noteInput.setSelectionRange(start, newEnd);
+    }
+
+    noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const start = noteInput.selectionStart;
+        const text = noteInput.value;
+        const currentLineStart = text.lastIndexOf('\n', start - 1) + 1;
+        const currentLine = text.substring(currentLineStart, start);
+
+        const unorderedMatch = currentLine.match(/^(\s*)([-*])\s+(.*)/);
+        const orderedMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)/);
+
+        if (unorderedMatch) {
+          e.preventDefault();
+          const indent = unorderedMatch[1];
+          const bullet = unorderedMatch[2];
+          const content = unorderedMatch[3];
+
+          if (content.trim() === '') {
+            noteInput.value = text.substring(0, currentLineStart) + text.substring(start);
+            noteInput.setSelectionRange(currentLineStart, currentLineStart);
+          } else {
+            const insertion = "\n" + indent + bullet + " ";
+            noteInput.value = text.substring(0, start) + insertion + text.substring(start);
+            const newPos = start + insertion.length;
+            noteInput.setSelectionRange(newPos, newPos);
+          }
+          updateActiveNote();
+        } else if (orderedMatch) {
+          e.preventDefault();
+          const indent = orderedMatch[1];
+          const num = parseInt(orderedMatch[2], 10);
+          const content = orderedMatch[3];
+
+          if (content.trim() === '') {
+            noteInput.value = text.substring(0, currentLineStart) + text.substring(start);
+            noteInput.setSelectionRange(currentLineStart, currentLineStart);
+          } else {
+            const insertion = "\n" + indent + (num + 1) + ". ";
+            noteInput.value = text.substring(0, start) + insertion + text.substring(start);
+            const newPos = start + insertion.length;
+            noteInput.setSelectionRange(newPos, newPos);
+          }
+          updateActiveNote();
+        }
+      }
+    });
+
+    function renderSidebar() {
+      notesList.innerHTML = '';
+      if (notes.length === 0) {
+        notesList.innerHTML = '<div class="empty-state">No notes found ;-;</div>';
+        return;
+      }
+
+      notes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = "note-item " + (note.id === activeNoteId ? 'active' : '');
+        
+        const lines = (note.text || '').trim().split('\n');
+        const rawTitle = lines[0] || 'Untitled Note';
+        const title = rawTitle.replace(/^#+\s*/, '');
+        
+        const rawPreview = lines.slice(1).join(' ').trim() || 'No additional text';
+        const preview = rawPreview.replace(/[*_`~>]/g, '');
+
+        item.innerHTML = `
+          <div class="note-preview-title">${escapeHtml(title)}</div>
+          <div class="note-preview-body">${escapeHtml(preview)}</div>
+        `;
+
+        item.addEventListener('click', () => {
+          activeNoteId = note.id;
+          loadActiveNote();
+          renderSidebar();
+        });
+
+        notesList.appendChild(item);
+      });
+    }
+
+    function loadActiveNote() {
+      const activeNote = notes.find(n => n.id === activeNoteId);
+      if (activeNote) {
+        noteInput.value = activeNote.text;
+        noteInput.disabled = false;
+        renderMarkdown();
+      } else {
+        noteInput.value = '';
+        noteInput.disabled = true;
+        markdownPreview.innerHTML = '';
+      }
+    }
+
+    function createNewNote() {
+      const newNote = {
+        id: Date.now(),
+        text: '# Untitled Note\n\n'
+      };
+      notes.unshift(newNote);
+      activeNoteId = newNote.id;
+      saveNotes();
+      
+      if (isPreviewMode) {
+        togglePreviewMode();
+      }
+      
+      loadActiveNote();
+      renderSidebar();
+      noteInput.focus();
+      showStatus('Created', 'success');
+    }
+
+    function updateActiveNote() {
+      if (!activeNoteId) return;
+      const activeNote = notes.find(n => n.id === activeNoteId);
+      if (activeNote) {
+        activeNote.text = noteInput.value;
+        saveNotes();
+        renderSidebar();
+        if (isPreviewMode) {
+          renderMarkdown();
+        }
+      }
+    }
+
+    function deleteActiveNote() {
+      if (!activeNoteId) return;
+      notes = notes.filter(n => n.id !== activeNoteId);
+      activeNoteId = notes.length ? notes[0].id : null;
+      saveNotes();
+      loadActiveNote();
+      renderSidebar();
+      showStatus('Deleted', 'error');
+    }
+
+    function saveNotes() {
+      localStorage.setItem('core_notes', JSON.stringify(notes));
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
+    document.querySelectorAll('.btn-tool[data-format]').forEach(button => {
+      button.addEventListener('click', () => {
+        const format = button.getAttribute('data-format');
+        insertFormat(format);
+      });
+    });
+
+    noteInput.addEventListener('input', updateActiveNote);
+    newNoteBtn.addEventListener('click', createNewNote);
+    deleteBtn.addEventListener('click', deleteActiveNote);
+    toggleModeBtn.addEventListener('click', togglePreviewMode);
+
+    applyBgSettings();
+    loadActiveNote();
+    renderSidebar();
+  </script>
+</body>
+</html>
